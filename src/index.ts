@@ -22,3 +22,5 @@ export { verifySummary, checkFacts, checkCopy, novelty } from "./verify.js";
 export type { Finding, VerifyOptions } from "./verify.js";
 export { renderArticle, checkAttribution, slugify } from "./render.js";
 export type { ArticleData, RenderedArticle } from "./render.js";
+export { fileTarget, httpTarget, queueTarget, jsonQueueFile, socialText } from "./targets.js";
+export type { Receipt, PublishTarget, FileTargetOptions, HttpTargetOptions, QueueTargetOptions, QueueStoreLike, QueuedPost, SocialPost, Channel } from "./targets.js";
