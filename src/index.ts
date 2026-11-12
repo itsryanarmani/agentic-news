@@ -28,3 +28,4 @@ export { MemoryStateStore, FileStateStore, approveItem } from "./state.js";
 export type { StateStore, StateRecord, StoredStatus } from "./state.js";
 export { runNews } from "./pipeline.js";
 export type { RunIO, RunReport, ItemResult, ItemStatus, ApprovalHook, ApprovalDecision } from "./pipeline.js";
+export { VERSION } from "./version.js";
