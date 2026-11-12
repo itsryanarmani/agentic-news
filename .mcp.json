@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "agentic-news": { "command": "npx", "args": ["-y", "agentic-news", "mcp"] }
+  }
+}

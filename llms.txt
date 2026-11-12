@@ -1,0 +1,16 @@
+# agentic-news
+
+Turn niche news into short, sourced, verified articles with a TL;DR first.
+
+Keywords: news,rss,atom,summarization,fact-check,content-pipeline,agentic-suite,cli,mcp.
+
+- SDK: import { runNews, parseConfig, verifySummary } from "agentic-news".
+- CLI: agentic-news run --config site.json (a dry run unless --live).
+- MCP: run agentic-news mcp, then call validate_config, verify_summary, run_news or list_pending.
+
+## Docs
+
+- README: https://github.com/itsryanarmani/agentic-news
+- Failure modes: https://github.com/itsryanarmani/agentic-news/blob/main/docs/failure-modes.md
+- End-to-end transcript: https://github.com/itsryanarmani/agentic-news/blob/main/docs/e2e-transcript.md
+- License: MIT
