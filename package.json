@@ -1,19 +1,46 @@
 {
   "name": "agentic-news",
+  "mcpName": "io.github.itsryanarmani/agentic-news",
   "version": "0.1.0",
   "description": "Turn niche news into short, sourced, verified articles with a TL;DR first. TypeScript SDK, CLI, and MCP server.",
-  "keywords": ["news", "rss", "atom", "summarization", "fact-check", "content-pipeline", "TypeScript", "cli", "mcp"],
+  "keywords": [
+    "news",
+    "rss",
+    "atom",
+    "summarization",
+    "fact-check",
+    "content-pipeline",
+    "TypeScript",
+    "cli",
+    "mcp"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/itsryanarmani/agentic-news.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itsryanarmani/agentic-news.git"
+  },
   "type": "module",
   "private": false,
-  "engines": { "node": ">=18" },
-  "files": ["dist"],
-  "publishConfig": { "access": "public" },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": { "agentic-news": "./dist/cli.js" },
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "bin": {
+    "agentic-news": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
@@ -27,5 +54,9 @@
     "tsup": "^8.0.0",
     "typescript": "^5.6.0",
     "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^3.25.76"
   }
 }

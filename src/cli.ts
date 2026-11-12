@@ -28,6 +28,7 @@ Commands:
       [--http <url> --token-env <NAME>] [--fixtures <web.json>] [--now <iso>] [--brief]
   pending --state <file>
   approve --state <file> --key <post key> --by <name>
+  mcp            (stdio MCP server; no approve tool by design)
 
 Dry run is the default. --live calls the targets and writes state.
 The CLI reads a token only from the env var named by --token-env.`;
@@ -125,6 +126,11 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
     if (command === "approve") {
       const record = await approveItem(new FileStateStore(need(flags, "state")), need(flags, "key"), need(flags, "by"), new Date());
       io.out(JSON.stringify({ approved: record.postKey, by: record.approver }));
+      return 0;
+    }
+    if (command === "mcp") {
+      const { startMcp } = await import("./mcp.js");
+      await startMcp();
       return 0;
     }
     io.err(`unknown command "${command}". Run agentic-news --help.`);
