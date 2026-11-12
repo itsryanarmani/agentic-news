@@ -43,6 +43,8 @@ export interface GetOptions {
   userAgent: string;
   accept?: string;
   maxRedirects?: number;
+  /** Runs before each request, after the host check (for example, robots.txt). */
+  beforeRequest?: (url: string) => Promise<void>;
 }
 
 export interface GetResult {
@@ -89,6 +91,7 @@ export async function boundedGet(url: string, options: GetOptions): Promise<GetR
     if (!hostAllowed(hostOf(current), options.allowHosts)) {
       throw new StageError(hop === 0 ? "host_not_allowed" : "redirect_off_allow_list", hostOf(current));
     }
+    await options.beforeRequest?.(current);
     let response: Response;
     try {
       response = await options.fetch(current, {

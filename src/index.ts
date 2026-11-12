@@ -14,3 +14,5 @@ export { filterItems, matchKeywords, allowedHosts } from "./filter.js";
 export type { FilterResult } from "./filter.js";
 export { dedupe } from "./dedupe.js";
 export type { DedupeResult } from "./dedupe.js";
+export { fetchArticle, extractText, parseRobots, robotsAllows } from "./article.js";
+export type { SourceArticle, RobotsCache, FetchArticleOptions } from "./article.js";

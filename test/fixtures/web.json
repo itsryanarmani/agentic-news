@@ -1,6 +1,50 @@
 {
-  "https://news.example.test/feed.xml": { "file": "feeds/news.xml", "headers": { "content-type": "application/rss+xml" } },
-  "https://agency.example.test/atom.xml": { "file": "feeds/agency.xml", "headers": { "content-type": "application/atom+xml" } },
-  "https://down.example.test/feed.xml": { "error": "network" },
-  "https://broken.example.test/feed.xml": { "file": "feeds/broken.xml" }
+  "https://news.example.test/feed.xml": {
+    "file": "feeds/news.xml",
+    "headers": {
+      "content-type": "application/rss+xml"
+    }
+  },
+  "https://agency.example.test/atom.xml": {
+    "file": "feeds/agency.xml",
+    "headers": {
+      "content-type": "application/atom+xml"
+    }
+  },
+  "https://down.example.test/feed.xml": {
+    "error": "network"
+  },
+  "https://broken.example.test/feed.xml": {
+    "file": "feeds/broken.xml"
+  },
+  "https://news.example.test/robots.txt": {
+    "body": "User-agent: *\nDisallow: /private/\n\nUser-agent: agentic-news\nDisallow: /private/\nAllow: /\n",
+    "headers": {
+      "content-type": "text/plain"
+    }
+  },
+  "https://news.example.test/2026/11/heat-pump-rebate-renters?utm_source=rss": {
+    "file": "pages/rebate-renters.html",
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "https://news.example.test/2026/11/installer-backlog": {
+    "status": 301,
+    "headers": {
+      "location": "https://elsewhere.example.test/backlog"
+    }
+  },
+  "https://news.example.test/2026/11/members-only": {
+    "file": "pages/members-only.html",
+    "headers": {
+      "content-type": "text/html"
+    }
+  },
+  "https://agency.example.test/notices/efficiency-standard": {
+    "file": "pages/efficiency-standard.html",
+    "headers": {
+      "content-type": "text/html"
+    }
+  }
 }
