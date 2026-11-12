@@ -1,0 +1,6 @@
+{
+  "https://news.example.test/feed.xml": { "file": "feeds/news.xml", "headers": { "content-type": "application/rss+xml" } },
+  "https://agency.example.test/atom.xml": { "file": "feeds/agency.xml", "headers": { "content-type": "application/atom+xml" } },
+  "https://down.example.test/feed.xml": { "error": "network" },
+  "https://broken.example.test/feed.xml": { "file": "feeds/broken.xml" }
+}
