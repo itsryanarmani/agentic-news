@@ -27,15 +27,21 @@ export function dedupe(items: NewsItem[], seen: ReadonlySet<string> = new Set(),
     const reject = (reason: string, detail?: string) =>
       rejected.push({ key: item.key, url: item.url, stage: "dedupe", reason, detail });
     const tokens = titleTokens(item.title);
-    if (seen.has(item.key)) reject("already_processed");
-    else if (urls.has(item.canonicalUrl)) reject("duplicate_url", item.canonicalUrl);
+    // A story already handled still counts below, so its copies under other URLs drop too.
+    const remember = () => {
+      urls.add(item.canonicalUrl);
+      hashes.add(item.contentHash);
+      titles.push(tokens);
+    };
+    if (seen.has(item.key)) {
+      reject("already_processed");
+      remember();
+    } else if (urls.has(item.canonicalUrl)) reject("duplicate_url", item.canonicalUrl);
     else if (hashes.has(item.contentHash)) reject("duplicate_content");
     else if (tokens.size >= 4 && titles.some((t) => jaccard(t, tokens) >= threshold)) reject("near_duplicate_title", item.title);
     else {
       kept.push(item);
-      urls.add(item.canonicalUrl);
-      hashes.add(item.contentHash);
-      titles.push(tokens);
+      remember();
     }
   }
   return { kept, rejected };

@@ -45,6 +45,8 @@ describe("filter and dedupe on fixture feeds", () => {
     const first = await run();
     const again = await run(new Set([first.deduped.kept[0].key]));
     expect(again.reasons).toContain("already_processed https://news.example.test/2026/11/heat-pump-rebate-renters?utm_source=rss");
+    // Its copy under another URL in another feed must not slip through on the retry.
+    expect(again.reasons).toContain("duplicate_content https://agency.example.test/notices/rebate-renters");
   });
 
   test("a blocked domain wins over the allow-list", async () => {
