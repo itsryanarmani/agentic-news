@@ -72,6 +72,11 @@ describe("render", () => {
     );
     expect(odd.markdown).toContain("[Example News](https://news.example.test/a%29b)");
     expect(checkAttribution(odd, config)).toEqual([]);
+    const nbsp = renderArticle(
+      { key: "abcdef0123456789", url: "https://news.example.test/a\u00a0b", title: "T", sourceName: "Example News", text: "" },
+      { tldr: "It works.", whyItMatters: "" }, config, [], NOW,
+    );
+    expect(nbsp.markdown).toContain("(https://news.example.test/a%C2%A0b)");
     void rendered;
   });
 

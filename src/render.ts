@@ -46,7 +46,7 @@ function inline(text: string): string {
 }
 
 function link(text: string, url: string): string {
-  return `[${escapeHtml(text).replace(/[[\]]/g, "\\$&")}](${url.replace(/[()\s<>"]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`)})`;
+  return `[${escapeHtml(text).replace(/[[\]]/g, "\\$&")}](${url.replace(/[()\s<>"]/g, (c) => (c === "(" ? "%28" : c === ")" ? "%29" : encodeURIComponent(c)))})`;
 }
 
 /** Attribution rules: a named source, a link on an allowed host, and both in the body. */
