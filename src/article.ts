@@ -33,7 +33,8 @@ export function parseRobots(text: string, agentToken: string): RobotsRule[] {
       if (!current || current.rules.length) groups.push((current = { agents: [], rules: [] }));
       current.agents.push(value.toLowerCase());
     } else if (current && value) {
-      current.rules.push({ allow: field.toLowerCase() === "allow", pattern: value });
+      // Rules and paths are both decoded, so %C3%A9 and é compare equal.
+      current.rules.push({ allow: field.toLowerCase() === "allow", pattern: decodePath(value) });
     }
   }
   const token = agentToken.toLowerCase();

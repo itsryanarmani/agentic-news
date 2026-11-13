@@ -110,6 +110,11 @@ describe("safe article fetch", () => {
     expect(results[3].reason).toBe("paywall");
   });
 
+  test("robots rules and paths compare decoded", () => {
+    const rules = parseRobots("User-agent: *\nDisallow: /caf%C3%A9\n", "agentic-news");
+    expect(robotsAllows(rules, "/café")).toBe(false);
+  });
+
   test("robots rules: own agent group wins, longest match wins", () => {
     const merged = parseRobots("User-agent: agentic-news\nDisallow: /private\n\nUser-agent: agentic-news\nDisallow: /secret\n", "agentic-news");
     expect(robotsAllows(merged, "/secret/x")).toBe(false);
