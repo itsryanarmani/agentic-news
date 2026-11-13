@@ -17,7 +17,10 @@ interface RobotsRule { allow: boolean; pattern: string }
 /** Parsed robots.txt rules per origin, shared across one run. */
 export type RobotsCache = Map<string, RobotsRule[] | "deny-all">;
 
-/** Rules for our agent token, else for "*". Empty means all paths allowed. */
+/**
+ * Rules for our agent token, else for "*". Every group that names the agent
+ * counts, merged, so a second group cannot be skipped. Empty means all paths allowed.
+ */
 export function parseRobots(text: string, agentToken: string): RobotsRule[] {
   const groups: Array<{ agents: string[]; rules: RobotsRule[] }> = [];
   let current: { agents: string[]; rules: RobotsRule[] } | undefined;
@@ -34,8 +37,9 @@ export function parseRobots(text: string, agentToken: string): RobotsRule[] {
     }
   }
   const token = agentToken.toLowerCase();
-  const mine = groups.find((g) => g.agents.some((a) => a !== "*" && token.includes(a)));
-  return (mine ?? groups.find((g) => g.agents.includes("*")))?.rules ?? [];
+  const mine = groups.filter((g) => g.agents.some((a) => a !== "*" && token.includes(a)));
+  const chosen = mine.length ? mine : groups.filter((g) => g.agents.includes("*"));
+  return chosen.flatMap((g) => g.rules);
 }
 
 /** Longest matching rule wins; allow wins a tie. Supports * and $. */
@@ -49,7 +53,8 @@ export function robotsAllows(rules: RobotsRule[], path: string): boolean {
   return best ? best.allow : true;
 }
 
-async function checkRobots(url: string, get: GetOptions, cache: RobotsCache): Promise<void> {
+/** Throws robots_disallowed or robots_unavailable. Caches rules per origin. */
+export async function checkRobots(url: string, get: GetOptions, cache: RobotsCache): Promise<void> {
   const { origin, pathname, search } = new URL(url);
   if (!cache.has(origin)) {
     try {
@@ -67,13 +72,14 @@ async function checkRobots(url: string, get: GetOptions, cache: RobotsCache): Pr
 }
 
 const PAYWALL = [/"isAccessibleForFree"\s*:\s*"?false/i, /class=["'][^"']*\bpaywall\b/i, /subscribe to (continue|keep) reading/i, /for subscribers only/i];
-const LOGIN = [/<input[^>]+type=["']password["']/i, /(sign|log) in to (continue|read)/i];
+const LOGIN = [/<input\b[^>]*\btype\s*=\s*["']?password\b/i, /(sign|log) in to (continue|read)/i];
 
 /** Strip scripts, styles and page chrome; keep the article body text. */
 export function extractText(html: string): string {
   const clean = html
     .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<(script|style|noscript|template|iframe|svg|nav|header|footer|aside|form)\b[\s\S]*?<\/\1>/gi, " ");
+    // A closing tag may carry spaces (</script >); an unclosed one drops the rest of the page.
+    .replace(/<(script|style|noscript|template|iframe|svg|nav|header|footer|aside|form)\b[\s\S]*?(?:<\/\1\s*>|$)/gi, " ");
   const scope = clean.match(/<article\b[\s\S]*?<\/article>/i)?.[0]
     ?? clean.match(/<main\b[\s\S]*?<\/main>/i)?.[0]
     ?? clean.match(/<body\b[\s\S]*?<\/body>/i)?.[0]
@@ -98,7 +104,8 @@ export async function fetchArticle(item: NewsItem, config: NewsConfig, options: 
   const robots = options.robots ?? new Map();
   const get: GetOptions = {
     fetch: options.fetch,
-    allowHosts: allowedHosts(config).filter((h) => !config.blockedDomains.includes(h)),
+    allowHosts: allowedHosts(config),
+    blockHosts: config.blockedDomains,
     maxBytes: config.maxBytes,
     timeoutMs: config.timeoutMs,
     userAgent: config.userAgent,

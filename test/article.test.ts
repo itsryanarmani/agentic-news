@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { fetchArticle, parseRobots, robotsAllows } from "../src/article.js";
+import { extractText, fetchArticle, parseRobots, robotsAllows } from "../src/article.js";
 import { dedupe } from "../src/dedupe.js";
 import { discover } from "../src/discover.js";
 import { filterItems } from "../src/filter.js";
@@ -57,8 +57,12 @@ describe("safe article fetch", () => {
   });
 
   test("a robots.txt that fails with 5xx means stay out", async () => {
-    const { results } = await fetchAll({ "https://agency.example.test/robots.txt": { status: 503 } });
-    expect(results[3].reason).toBe("robots_unavailable");
+    const config = fixtureConfig();
+    const { items } = await discover(config, fixtureWeb().fetch);
+    const item = dedupe(filterItems(items, config, NOW).kept).kept[3];
+    const web = fixtureWeb({ "https://agency.example.test/robots.txt": { status: 503 } });
+    await expect(fetchArticle(item, config, { fetch: web.fetch })).rejects.toMatchObject({ reason: "robots_unavailable" });
+    expect(web.requests).not.toContain(item.url);
   });
 
   test("F12: an oversized article is refused", async () => {
@@ -68,7 +72,35 @@ describe("safe article fetch", () => {
     expect(results[3].reason).toBe("too_large");
   });
 
+  test("robots.txt applies to feeds too", async () => {
+    const web = fixtureWeb({ "https://agency.example.test/robots.txt": { body: "User-agent: *\nDisallow: /\n" } });
+    const found = await discover(fixtureConfig(), web.fetch);
+    expect(found.errors.find((e) => e.source === "Example Agency")?.reason).toBe("robots_disallowed");
+    expect(web.requests).not.toContain("https://agency.example.test/atom.xml");
+  });
+
+  test("a redirect to a blocked subdomain is refused", async () => {
+    const config = fixtureConfig({ fetchAllowList: ["*.news.example.test", "agency.example.test"], blockedDomains: ["bad.news.example.test"] });
+    const web = fixtureWeb({ "https://agency.example.test/notices/efficiency-standard": { status: 302, headers: { location: "https://bad.news.example.test/x" } } });
+    const { items } = await discover(config, web.fetch);
+    const item = dedupe(filterItems(items, config, NOW).kept).kept.find((i) => i.url.includes("efficiency"));
+    await expect(fetchArticle(item!, config, { fetch: web.fetch })).rejects.toMatchObject({ reason: "redirect_off_allow_list" });
+    expect(web.requests.some((u) => u.includes("bad.news"))).toBe(false);
+  });
+
+  test("scripts with spaced or missing close tags and unquoted password inputs are handled", async () => {
+    expect(extractText("<article><p>real</p><script><p>fake content</p></script ><p>also real</p></article>")).toBe("real\n\nalso real");
+    expect(extractText("<body><p>real</p><script>var x = '<p>fake</p>';")).toBe("real");
+    const { results } = await fetchAll({
+      "https://agency.example.test/notices/efficiency-standard": { body: `<form-like><input type=password></form-like><p>${"heat pump ".repeat(60)}</p>`, headers: { "content-type": "text/html" } },
+    });
+    expect(results[3].reason).toBe("login_required");
+  });
+
   test("robots rules: own agent group wins, longest match wins", () => {
+    const merged = parseRobots("User-agent: agentic-news\nDisallow: /private\n\nUser-agent: agentic-news\nDisallow: /secret\n", "agentic-news");
+    expect(robotsAllows(merged, "/secret/x")).toBe(false);
+    expect(robotsAllows(merged, "/private")).toBe(false);
     const rules = parseRobots("User-agent: *\nDisallow: /\n\nUser-agent: agentic-news\nDisallow: /a/\nAllow: /a/public\n", "agentic-news");
     expect(robotsAllows(rules, "/b")).toBe(true);
     expect(robotsAllows(rules, "/a/x")).toBe(false);

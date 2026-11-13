@@ -58,9 +58,9 @@ describe("filter and dedupe on fixture feeds", () => {
     expect(again.rejected.map((r) => r.reason)).toEqual(["already_processed", "duplicate_content"]);
   });
 
-  test("a blocked domain wins over the allow-list", async () => {
-    const { reasons } = await run(new Set(), { blockedDomains: ["agency.example.test", "blocked.example.test"] });
-    expect(reasons).toContain("blocked_domain https://agency.example.test/notices/efficiency-standard");
+  test("a blocked domain wins over the allow-list, down to its own feed", async () => {
+    const { web } = await run(new Set(), { blockedDomains: ["agency.example.test", "blocked.example.test"] });
+    expect(web.requests.some((u) => u.startsWith("https://agency.example.test/"))).toBe(false);
   });
 
   test("a narrower recency window drops yesterday's notice", async () => {
