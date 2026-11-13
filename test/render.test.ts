@@ -64,6 +64,17 @@ describe("render", () => {
     expect(checkAttribution(fenced, config)).toEqual([]);
   });
 
+  test("parentheses in a source URL cannot cut the link short", async () => {
+    const rendered = await renderFirst();
+    const odd = renderArticle(
+      { key: "abcdef0123456789", url: "https://news.example.test/a)b", title: "T", sourceName: "Example News", text: "" },
+      { tldr: "It works.", whyItMatters: "" }, config, [], NOW,
+    );
+    expect(odd.markdown).toContain("[Example News](https://news.example.test/a%29b)");
+    expect(checkAttribution(odd, config)).toEqual([]);
+    void rendered;
+  });
+
   test("slugs are short, ASCII and cut on a word break", () => {
     expect(slugify("Café rebate: what renters need to know about the new provincial heat pump program")).toBe("cafe-rebate-what-renters-need-to-know-about-the-new");
   });
