@@ -1,0 +1,25 @@
+{
+  "site": "example-niche",
+  "siteName": "Example Niche Directory",
+  "keywords": ["heat pump", "rebate"],
+  "sources": [
+    { "name": "Example News", "url": "https://news.example.test/feed.xml" },
+    { "name": "Example Agency", "url": "https://agency.example.test/atom.xml" },
+    { "name": "Down Feed", "url": "https://down.example.test/feed.xml" },
+    { "name": "Broken Feed", "url": "https://broken.example.test/feed.xml" }
+  ],
+  "fetchAllowList": ["news.example.test", "agency.example.test"],
+  "blockedDomains": ["blocked.example.test"],
+  "recencyHours": 48,
+  "maxItemsPerDay": 5,
+  "sensitive": false,
+  "requireContext": true,
+  "tags": ["heat-pumps"],
+  "context": [
+    {
+      "keyword": "rebate",
+      "note": "Our directory lists installers who handle rebate paperwork, so check the installer pages before you apply.",
+      "relatedLink": { "title": "How rebates work", "url": "https://directory.example.test/guides/rebates" }
+    }
+  ]
+}
