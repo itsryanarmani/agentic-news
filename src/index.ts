@@ -20,3 +20,5 @@ export { extractiveSummarizer, contextFor, splitSentences } from "./summarize.js
 export type { Summarizer, Summary, SummaryInput } from "./summarize.js";
 export { verifySummary, checkFacts, checkCopy, novelty } from "./verify.js";
 export type { Finding, VerifyOptions } from "./verify.js";
+export { renderArticle, checkAttribution, slugify } from "./render.js";
+export type { ArticleData, RenderedArticle } from "./render.js";
