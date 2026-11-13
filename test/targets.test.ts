@@ -59,6 +59,6 @@ describe("publish targets", () => {
     const long = { ...article, data: { ...article.data, title: "Heat pump ".repeat(60).trim(), why_it_matters: "" } };
     const text = socialText(long, "https://directory.example.test/n/1");
     expect(text.length).toBeLessThanOrEqual(300);
-    expect(text.endsWith("…\n\nhttps://directory.example.test/n/1")).toBe(true);
+    expect(text.endsWith("… (via Example News)\n\nhttps://directory.example.test/n/1")).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { checkAttribution, slugify } from "../src/render.js";
-import { fixtureConfig, renderFirst } from "./helpers.js";
+import { checkAttribution, renderArticle, slugify } from "../src/render.js";
+import { fixtureConfig, NOW, renderFirst } from "./helpers.js";
 
 const config = fixtureConfig();
 

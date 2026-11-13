@@ -106,9 +106,11 @@ export function socialText(article: RenderedArticle, link: string, maxChars = 30
   const extra = splitSentences(why)[0];
   if (extra && head.length + extra.length + 2 + tail.length <= maxChars) return `${head}\n\n${extra}${tail}`;
   if (head.length + tail.length <= maxChars) return `${head}${tail}`;
-  const room = maxChars - tail.length - 1;
+  // Cut the headline, never the attribution or the link.
+  const via = ` (via ${source})`;
+  const room = maxChars - tail.length - via.length - 1;
   if (room < 20) throw new StageError("link_too_long", link);
-  return `${head.slice(0, room).replace(/\s+\S*$/, "")}…${tail}`;
+  return `${title.slice(0, room).replace(/\s+\S*$/, "")}…${via}${tail}`;
 }
 
 export interface QueueTargetOptions {
