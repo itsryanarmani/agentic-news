@@ -99,5 +99,10 @@ describe("summarize and verify on fixture articles", () => {
     expect(v("Alice Smith and Bob Jones report.", "Alice Jones reports.")).toEqual(["unsupported_name: Alice Jones"]);
     expect(v("The teams won.", "Five teams won.")).toEqual(["unsupported_number: Five"]);
     expect(v("The cost is unknown.", "The cost is $900.", ["$900"])).toEqual(["unsupported_amount: $900", "unsupported_number: 900"]);
+    expect(splitSentences("It works!It helps!It lasts!")).toHaveLength(3);
+    expect(v("It starts June 12, 2026; planning ends in 2027.", "It starts June 12, 2027.")).toEqual(["unsupported_date: June 12, 2027"]);
+    expect(v("It starts June 12, 2026.", "It starts June 12 2026.")).toEqual([]);
+    expect(v("May flowers bloom. Alice Smith spoke.", "Then May Smith spoke.")).toEqual(["unsupported_name: May Smith"]);
+    expect(v("It costs 50 dollars and uses 50 euros.", "It costs 50 pounds.")).toEqual(["unsupported_amount: 50 pounds"]);
   });
 });

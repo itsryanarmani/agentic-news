@@ -27,11 +27,12 @@ export type Summarizer = (input: SummaryInput) => Summary | Promise<Summary>;
 
 /**
  * Split into sentences at . ! ? (plus any closing quotes) followed by a
- * space. Decimals stay whole and paragraphs never join. No text is dropped.
+ * space or a capital letter. Decimals stay whole and paragraphs never
+ * join. No text is dropped.
  */
 export function splitSentences(text: string): string[] {
   return text.split(/\n\s*\n/).flatMap((para) =>
-    para.replace(/\s+/g, " ").trim().replace(/([.!?]+["”’)\]]*)\s+(?=\S)/g, "$1\u0001").split("\u0001"))
+    para.replace(/\s+/g, " ").trim().replace(/([.!?]+["”’)\]]*)(?:\s+(?=\S)|(?=\p{Lu}))/gu, "$1\u0001").split("\u0001"))
     .map((s) => s.trim()).filter(Boolean);
 }
 
