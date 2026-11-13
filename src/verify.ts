@@ -78,7 +78,13 @@ export function checkFacts(text: string, allowed: string[]): Finding[] {
   for (const m of text.match(AMOUNT_WORDS) ?? []) if (!hasExact(hay, norm(m))) add("unsupported_amount", m);
   for (const m of text.match(NUMERIC_DATE) ?? []) if (!hasExact(hay, m)) add("unsupported_date", m);
   for (const m of text.match(MONTH_DAY) ?? []) if (!hasExact(hay, norm(m))) add("unsupported_date", m);
-  for (const m of text.match(NUMBER) ?? []) if (!hasExact(hay, norm(m))) add("unsupported_number", m);
+  for (const m of text.matchAll(NUMBER)) {
+    // A number inside a word (utf8, 5e6, B2B) is checked as that whole word.
+    const before = text.slice(0, m.index).match(/[\p{L}\p{N}]*$/u)?.[0] ?? "";
+    const after = text.slice(m.index + m[0].length).match(/^[\p{L}\p{N}]*/u)?.[0] ?? "";
+    const word = /\p{L}/u.test(before + after) ? before + m[0] + after : m[0];
+    if (!hasExact(hay, norm(word))) add("unsupported_number", word);
+  }
   for (const m of text.match(NUMBER_WORDS) ?? []) if (!hasExact(hay, m.toLowerCase())) add("unsupported_number", m);
   for (const m of text.match(ONE) ?? []) if (!hasExact(hay, "one")) add("unsupported_number", m);
   // Brand-style names that start lowercase (iPhone, eBay) are names too.

@@ -114,6 +114,7 @@ describe("summarize and verify on fixture articles", () => {
     expect(v("It uses a device.", "It uses iPhone.")).toEqual(["unsupported_name: iPhone"]);
     expect(v("The teams won.", "The one winner gets a prize.")).toEqual(["unsupported_number: one"]);
     expect(v("It costs 50 euros.", "It costs $  50.")).toEqual(["unsupported_amount: $  50"]);
-    expect(v("It has 5 seats.", "It has 5e6 seats.")).toEqual(["unsupported_number: 6"]);
+    expect(v("It has 5 seats.", "It has 5e6 seats.")).toEqual(["unsupported_number: 5e6"]);
+    expect(v("It supports utf8.", "It supports utf8.")).toEqual([]);
   });
 });
