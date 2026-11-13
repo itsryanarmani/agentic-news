@@ -48,12 +48,17 @@ export function createMcpServer(deps: McpDeps = {}): McpServer {
       sourceText: z.string(),
       tldr: z.string(),
       whyItMatters: z.string(),
-      trusted: z.array(z.string()).optional().describe("Host text the summary may also draw facts from."),
+      sourceTitle: z.string().optional().describe("The source headline. Facts in it count as source facts."),
+      sourceName: z.string().optional().describe("The publisher name."),
       requireContext: z.boolean().optional(),
     },
     annotations: { readOnlyHint: true },
-  }, async ({ sourceText, tldr, whyItMatters, trusted, requireContext }) =>
-    ok({ findings: verifySummary({ tldr, whyItMatters }, sourceText, { trusted: trusted ?? [], requireContext: requireContext ?? true }) }));
+  }, async ({ sourceText, tldr, whyItMatters, sourceTitle, sourceName, requireContext }) =>
+    // No extra trusted text here: an agent must not vouch for its own facts.
+    ok({ findings: verifySummary({ tldr, whyItMatters }, sourceText, {
+      sourceMeta: [sourceTitle ?? "", sourceName ?? ""],
+      requireContext: requireContext ?? true,
+    }) }));
 
   server.registerTool("run_news", {
     description: "Run one site through discover, filter, dedupe, fetch, summarize, verify and render. Dry run by default. A live run needs live: true, approved: true and a target (outDir or queuePath). Sensitive items are only queued for human approval.",

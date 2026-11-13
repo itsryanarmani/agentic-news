@@ -43,6 +43,14 @@ describe("MCP server", () => {
     expect(r.body.findings.map((f: { reason: string }) => f.reason)).toEqual(["unsupported_amount", "unsupported_number"]);
   });
 
+  test("verify_summary takes no agent-supplied trusted text", async () => {
+    const { client, call } = await connect();
+    const tool = (await client.listTools()).tools.find((t) => t.name === "verify_summary");
+    expect(Object.keys(tool?.inputSchema.properties ?? {})).not.toContain("trusted");
+    const r = await call("verify_summary", { sourceText: "No award.", tldr: "The award is $900.", whyItMatters: "", trusted: ["$900"], requireContext: false });
+    expect(r.body.findings.map((f: { reason: string }) => f.reason)).toContain("unsupported_amount");
+  });
+
   test("run_news is a dry run by default; live needs approved and a target", async () => {
     const { call } = await connect();
     const dir = mkdtempSync(join(tmpdir(), "anw-mcp-"));
