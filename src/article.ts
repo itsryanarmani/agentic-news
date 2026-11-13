@@ -81,7 +81,9 @@ export async function checkRobots(url: string, get: GetOptions, cache: RobotsCac
   }
   const rules = cache.get(origin);
   if (rules === "deny-all") throw new StageError("robots_unavailable", origin);
-  if (!robotsAllows(rules ?? [], decodePath(pathname + search))) throw new StageError("robots_disallowed", pathname);
+  // In a path, a literal * or $ is just a character, so write it the way rules write it (%2A, %24).
+  const path = decodePath(pathname + search).replace(/\*/g, "%2A").replace(/\$/g, "%24");
+  if (!robotsAllows(rules ?? [], path)) throw new StageError("robots_disallowed", pathname);
 }
 
 const PAYWALL = [/"isAccessibleForFree"\s*:\s*"?false/i, /\bclass\s*=\s*["']?[^"'>]*\bpaywall\b/i, /subscribe to (continue|keep) reading/i, /for subscribers only/i];

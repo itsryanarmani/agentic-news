@@ -120,6 +120,15 @@ describe("safe article fetch", () => {
     expect(robotsAllows(rules, "/private/secret/public")).toBe(false);
   });
 
+  test("a literal asterisk in a request path matches an encoded one in a rule", async () => {
+    const config = fixtureConfig();
+    const { items } = await discover(config, fixtureWeb().fetch);
+    const item = dedupe(filterItems(items, config, NOW).kept).kept[3];
+    const starred = { ...item, url: "https://agency.example.test/private/*/public" };
+    const web = fixtureWeb({ "https://agency.example.test/robots.txt": { body: "User-agent: *\nDisallow: /private/%2A/public\n" } });
+    await expect(fetchArticle(starred, config, { fetch: web.fetch })).rejects.toMatchObject({ reason: "robots_disallowed" });
+  });
+
   test("robots rules: own agent group wins, longest match wins", () => {
     const merged = parseRobots("User-agent: agentic-news\nDisallow: /private\n\nUser-agent: agentic-news\nDisallow: /secret\n", "agentic-news");
     expect(robotsAllows(merged, "/secret/x")).toBe(false);
