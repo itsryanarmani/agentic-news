@@ -5,15 +5,39 @@ export function hostOf(url: string): string {
   return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
 }
 
-/** True when host is a listed domain or a subdomain of one. */
-export function hostMatches(host: string, domains: string[]): boolean {
-  const h = host.toLowerCase().replace(/^www\./, "");
-  return domains.some((d) => h === d || h.endsWith(`.${d}`));
+function bare(host: string): string {
+  return host.toLowerCase().replace(/^www\./, "");
+}
+
+/**
+ * Allow-list match: the exact host only. "*.example.test" allows every
+ * subdomain of example.test (and example.test itself), so a wide allow is
+ * always written on purpose.
+ */
+export function hostAllowed(host: string, allow: string[]): boolean {
+  const h = bare(host);
+  return allow.some((entry) => {
+    const d = bare(entry);
+    if (!d.startsWith("*.")) return h === d;
+    const root = d.slice(2);
+    return h === root || h.endsWith(`.${root}`);
+  });
+}
+
+/** Block-list match: the listed domain and every subdomain of it. */
+export function hostBlocked(host: string, block: string[]): boolean {
+  const h = bare(host);
+  return block.some((entry) => {
+    const d = bare(entry).replace(/^\*\./, "");
+    return h === d || h.endsWith(`.${d}`);
+  });
 }
 
 export interface GetOptions {
   fetch: FetchLike;
   allowHosts: string[];
+  /** Checked on every hop; wins over allowHosts. */
+  blockHosts?: string[];
   maxBytes: number;
   timeoutMs: number;
   userAgent: string;
@@ -59,7 +83,10 @@ export async function boundedGet(url: string, options: GetOptions): Promise<GetR
   for (let hop = 0; hop <= maxRedirects; hop++) {
     const protocol = new URL(current).protocol;
     if (protocol !== "https:" && protocol !== "http:") throw new StageError("bad_url", current);
-    if (!hostMatches(hostOf(current), options.allowHosts)) {
+    if (hostBlocked(hostOf(current), options.blockHosts ?? [])) {
+      throw new StageError(hop === 0 ? "blocked_domain" : "redirect_off_allow_list", hostOf(current));
+    }
+    if (!hostAllowed(hostOf(current), options.allowHosts)) {
       throw new StageError(hop === 0 ? "host_not_allowed" : "redirect_off_allow_list", hostOf(current));
     }
     let response: Response;
@@ -80,7 +107,15 @@ export async function boundedGet(url: string, options: GetOptions): Promise<GetR
       current = new URL(location, current).toString();
       continue;
     }
-    const body = await readCapped(response, options.maxBytes);
+    let body: string;
+    try {
+      body = await readCapped(response, options.maxBytes);
+    } catch (error) {
+      if (error instanceof StageError) throw error;
+      const name = (error as { name?: string })?.name;
+      // A body that stalls after the headers hits the same time cap.
+      throw new StageError(name === "TimeoutError" || name === "AbortError" ? "timeout" : "network_error", String(error));
+    }
     return { url: current, status: response.status, contentType: response.headers.get("content-type") ?? "", body };
   }
   throw new StageError("too_many_redirects", url);

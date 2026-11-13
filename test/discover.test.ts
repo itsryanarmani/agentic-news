@@ -52,6 +52,29 @@ describe("discover from allow-listed feeds", () => {
     await expect(boundedGet("https://a.example.test/slow", opts)).rejects.toMatchObject({ reason: "timeout" });
   });
 
+  test("allow-list match is exact unless written as *.domain; a redirect to a subdomain is refused", async () => {
+    const web = fixtureFetch({
+      "https://a.example.test/r": { status: 302, headers: { location: "https://evil.a.example.test/x" } },
+      "https://evil.a.example.test/x": { body: "x" },
+    });
+    const opts = { fetch: web.fetch, maxBytes: 1024, timeoutMs: 50, userAgent: "test" };
+    await expect(boundedGet("https://a.example.test/r", { ...opts, allowHosts: ["a.example.test"] }))
+      .rejects.toMatchObject({ reason: "redirect_off_allow_list" });
+    expect(web.requests).not.toContain("https://evil.a.example.test/x");
+    await expect(boundedGet("https://a.example.test/r", { ...opts, allowHosts: ["*.a.example.test"], blockHosts: ["evil.a.example.test"] }))
+      .rejects.toMatchObject({ reason: "redirect_off_allow_list" });
+    expect((await boundedGet("https://a.example.test/r", { ...opts, allowHosts: ["*.a.example.test"] })).body).toBe("x");
+  });
+
+  test("a body that stalls after the headers is a timeout, not a crash", async () => {
+    const stalled = new ReadableStream({
+      pull(controller) { controller.error(Object.assign(new Error("aborted"), { name: "AbortError" })); },
+    });
+    const fetch = async () => new Response(stalled);
+    await expect(boundedGet("https://a.example.test/s", { fetch, allowHosts: ["a.example.test"], maxBytes: 1024, timeoutMs: 50, userAgent: "t" }))
+      .rejects.toMatchObject({ reason: "timeout" });
+  });
+
   test("entities and CDATA decode in feed text", () => {
     const xml = `<rss><channel><item><title><![CDATA[Rebate &amp; heat pump]]></title><link>https://a.example.test/x</link></item></channel></rss>`;
     expect(parseFeed(xml, "https://a.example.test/feed")[0].title).toBe("Rebate & heat pump");

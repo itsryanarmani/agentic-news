@@ -1,7 +1,7 @@
 export type { FetchLike, SourceFeed, ContextNote, NewsConfig, NewsItem, Stage, Rejection, SourceError } from "./types.js";
 export { StageError } from "./types.js";
 export { parseConfig, ConfigError } from "./config.js";
-export { boundedGet, hostOf, hostMatches } from "./http.js";
+export { boundedGet, hostOf, hostAllowed, hostBlocked } from "./http.js";
 export type { GetOptions, GetResult } from "./http.js";
 export { parseFeed, parsePage, decodeText } from "./feed.js";
 export type { FeedEntry } from "./feed.js";
