@@ -53,6 +53,17 @@ export function robotsAllows(rules: RobotsRule[], path: string): boolean {
   return best ? best.allow : true;
 }
 
+/** Decode %XX escapes so /%70rivate is matched as /private. Bad escapes stay as they are. */
+function decodePath(path: string): string {
+  return path.replace(/(?:%[0-9a-f]{2})+/gi, (m) => {
+    try {
+      return decodeURIComponent(m);
+    } catch {
+      return m;
+    }
+  });
+}
+
 /** Throws robots_disallowed or robots_unavailable. Caches rules per origin. */
 export async function checkRobots(url: string, get: GetOptions, cache: RobotsCache): Promise<void> {
   const { origin, pathname, search } = new URL(url);
@@ -68,10 +79,10 @@ export async function checkRobots(url: string, get: GetOptions, cache: RobotsCac
   }
   const rules = cache.get(origin);
   if (rules === "deny-all") throw new StageError("robots_unavailable", origin);
-  if (!robotsAllows(rules ?? [], pathname + search)) throw new StageError("robots_disallowed", pathname);
+  if (!robotsAllows(rules ?? [], decodePath(pathname + search))) throw new StageError("robots_disallowed", pathname);
 }
 
-const PAYWALL = [/"isAccessibleForFree"\s*:\s*"?false/i, /class=["'][^"']*\bpaywall\b/i, /subscribe to (continue|keep) reading/i, /for subscribers only/i];
+const PAYWALL = [/"isAccessibleForFree"\s*:\s*"?false/i, /\bclass\s*=\s*["']?[^"'>]*\bpaywall\b/i, /subscribe to (continue|keep) reading/i, /for subscribers only/i];
 const LOGIN = [/<input\b[^>]*\btype\s*=\s*["']?password\b/i, /(sign|log) in to (continue|read)/i];
 
 /** Strip scripts, styles and page chrome; keep the article body text. */

@@ -97,6 +97,19 @@ describe("safe article fetch", () => {
     expect(results[3].reason).toBe("login_required");
   });
 
+  test("robots.txt matches decoded paths, and unquoted paywall classes are caught", async () => {
+    const config = fixtureConfig();
+    const { items } = await discover(config, fixtureWeb().fetch);
+    const item = dedupe(filterItems(items, config, NOW).kept).kept[3];
+    const encoded = { ...item, url: "https://agency.example.test/%6Eotices/efficiency-standard" };
+    const web = fixtureWeb({ "https://agency.example.test/robots.txt": { body: "User-agent: *\nDisallow: /notices/\n" } });
+    await expect(fetchArticle(encoded, config, { fetch: web.fetch })).rejects.toMatchObject({ reason: "robots_disallowed" });
+    const { results } = await fetchAll({
+      "https://agency.example.test/notices/efficiency-standard": { body: `<div class=paywall><p>${"Subscribe now ".repeat(40)}</p></div>`, headers: { "content-type": "text/html" } },
+    });
+    expect(results[3].reason).toBe("paywall");
+  });
+
   test("robots rules: own agent group wins, longest match wins", () => {
     const merged = parseRobots("User-agent: agentic-news\nDisallow: /private\n\nUser-agent: agentic-news\nDisallow: /secret\n", "agentic-news");
     expect(robotsAllows(merged, "/secret/x")).toBe(false);
