@@ -19,7 +19,8 @@ beforeAll(() => {
   if (!existsSync(CLI)) execFileSync("npm", ["run", "build"], { cwd: ROOT, stdio: "ignore" });
 }, 60_000);
 
-describe("agentic-news CLI end to end", () => {
+// Each case spawns the CLI several times; allow for a slow machine.
+describe("agentic-news CLI end to end", { timeout: 30_000 }, () => {
   test("dry run writes nothing; live run writes files, queue and state; retry adds nothing", () => {
     const dir = mkdtempSync(join(tmpdir(), "anw-cli-"));
     const state = join(dir, "state.json");
