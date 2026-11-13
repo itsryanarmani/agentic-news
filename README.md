@@ -8,7 +8,7 @@ Each site has one JSON config. The host runs agentic-news from cron or a CI job;
 
 ## Install
 
-The package is not on npm yet. Install it from GitHub:
+The package is not on npm yet. Install it from GitHub; npm builds it on install:
 
 ```sh
 npm install github:itsryanarmani/agentic-news
@@ -87,7 +87,8 @@ Each stage is a small function with injected I/O: fetch, clock, state store, sum
 ```
 
 - `sources` is the allow-list. A source is a feed, or one official page with `"kind": "page"`.
-- Articles come only from `fetchAllowList` and the source hosts. `blockedDomains` wins over both.
+- Articles come only from `fetchAllowList` and the source hosts. An entry matches that exact host; write `*.example.test` to allow its subdomains too.
+- `blockedDomains` covers each domain and its subdomains, wins over both lists, and applies to every redirect hop.
 - `sensitive: true` (health, legal, money, immigration) holds every item for a person to approve.
 - `context` is your own text. "Why it matters" and the related link come from it. With `requireContext: true`, an item with no added context is refused.
 
@@ -95,7 +96,8 @@ Each stage is a small function with injected I/O: fetch, clock, state store, sum
 
 The verifier checks every summary, whoever wrote it:
 
-- Each number, currency amount, date and capitalized name must appear in the source or in your own config text.
+- Each number (digits or words such as "five"), currency amount, date and capitalized name must appear in the source. Names of two or more words must appear as the same phrase.
+- The TL;DR may use only the source and its title and name. "Why it matters" may also use your own config text.
 - The TL;DR has at most 2 sentences.
 - No run of 8 or more source words appears outside one short quote of 30 words or fewer.
 - With `requireContext`, "why it matters" has at least 8 words, and at least half of its content words are new.
@@ -126,15 +128,19 @@ The default summarizer is extractive and deterministic. It quotes one key senten
 ## Safety defaults
 
 - The SDK, CLI and MCP server all default to a dry run.
-- robots.txt is checked on every URL, including each redirect hop. A robots.txt that fails with 5xx means stay out.
+- robots.txt is checked on every URL, feeds included, and on each redirect hop. A robots.txt that fails with 5xx means stay out.
 - A redirect to a host off the allow-list is refused before that host is contacted.
 - Every request has a size cap (1 MB) and a time cap (10 s). Paywall and login pages are refused.
 - The HTTP target gets its token from a resolver you supply, sends an idempotency key and refuses redirects.
+- The markdown body escapes HTML. Front matter and JSON hold raw text, so escape it in your templates.
+- When one target fails after another succeeds, the run stores the receipts, and the next run calls only the failed target.
+- Several sites can share one state file. Each run sees only its own site's records.
 
 ## Limits
 
 - The feed parser reads RSS 2.0, RSS 1.0 and Atom with regular expressions. It is not a full XML parser.
 - Name and date checks match patterns. They catch invented figures and names, not wrong meaning. Review sensitive items.
+- The added-context check counts new words. A close synonym rewrite of the source can pass it.
 - Text extraction keeps paragraphs, headings, list items and quotes from `<article>`, `<main>` or `<body>`.
 - Labels in the rendered article ("TL;DR", "Why it matters") are in English.
 
