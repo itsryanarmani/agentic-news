@@ -10,3 +10,7 @@ export type { DiscoverResult } from "./discover.js";
 export { canonicalUrl, contentHash, itemKey, titleTokens, sha256 } from "./keys.js";
 export { fixtureFetch } from "./fixture-fetch.js";
 export type { FixtureRoute, FixtureFetch } from "./fixture-fetch.js";
+export { filterItems, matchKeywords, allowedHosts } from "./filter.js";
+export type { FilterResult } from "./filter.js";
+export { dedupe } from "./dedupe.js";
+export type { DedupeResult } from "./dedupe.js";
