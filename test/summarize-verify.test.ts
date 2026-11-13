@@ -112,5 +112,8 @@ describe("summarize and verify on fixture articles", () => {
     expect(v("It starts June 12, 2026; planning ends in 2027.", "It starts June 12th, 2027.")).toEqual(["unsupported_date: June 12th, 2027"]);
     expect(v("It starts June 12, 2026.", "It starts June 12th, 2026.")).toEqual([]);
     expect(v("It uses a device.", "It uses iPhone.")).toEqual(["unsupported_name: iPhone"]);
+    expect(v("The teams won.", "The one winner gets a prize.")).toEqual(["unsupported_number: one"]);
+    expect(v("It costs 50 euros.", "It costs $  50.")).toEqual(["unsupported_amount: $  50"]);
+    expect(v("It has 5 seats.", "It has 5e6 seats.")).toEqual(["unsupported_number: 6"]);
   });
 });
