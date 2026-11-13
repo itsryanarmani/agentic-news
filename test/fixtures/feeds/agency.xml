@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Example Agency notices</title>
+<entry><title>Province expands heat pump rebate to renters</title><link rel="alternate" href="https://news.example.test/2026/11/heat-pump-rebate-renters/"/><published>2026-11-12T08:05:00Z</published></entry>
+<entry><title>Agency publishes heat pump efficiency standard</title><link href="https://agency.example.test/notices/efficiency-standard"/><updated>2026-11-11T16:00:00Z</updated><summary>A new standard for heat pump efficiency.</summary></entry>
+<entry><title>Province expands the heat pump rebate to renters</title><link href="https://agency.example.test/notices/rebate-renters"/><published>2026-11-12T09:00:00Z</published></entry>
+</feed>
