@@ -3,7 +3,7 @@ import { fetchArticle, type SourceArticle } from "../src/article.js";
 import { dedupe } from "../src/dedupe.js";
 import { discover } from "../src/discover.js";
 import { filterItems } from "../src/filter.js";
-import { contextFor, extractiveSummarizer, type Summary } from "../src/summarize.js";
+import { contextFor, extractiveSummarizer, splitSentences, type Summary } from "../src/summarize.js";
 import { verifySummary } from "../src/verify.js";
 import { fixtureConfig, fixtureWeb, NOW } from "./helpers.js";
 
@@ -26,8 +26,8 @@ async function sources(): Promise<Array<{ article: SourceArticle; matched: strin
 }
 
 function check(summary: Summary, article: SourceArticle) {
-  const trusted = [article.title, article.sourceName, ...config.context.map((c) => c.note)];
-  return verifySummary(summary, article.text, { trusted, requireContext: true }).map((f) => `${f.reason}: ${f.detail}`);
+  const options = { sourceMeta: [article.title, article.sourceName], hostText: config.context.map((c) => c.note), requireContext: true };
+  return verifySummary(summary, article.text, options).map((f) => `${f.reason}: ${f.detail}`);
 }
 
 describe("summarize and verify on fixture articles", () => {
@@ -63,8 +63,7 @@ describe("summarize and verify on fixture articles", () => {
       "unsupported_date: January 5",
       "unsupported_number: 7,500",
       "unsupported_number: 5",
-      "unsupported_name: Jordan",
-      "unsupported_name: Quill",
+      "unsupported_name: Minister Jordan Quill",
       "unsupported_date: January",
       "unsupported_number: 55,000",
     ]);
@@ -88,5 +87,17 @@ describe("summarize and verify on fixture articles", () => {
     const [rebate] = await sources();
     const thin = { ...paraphrase, whyItMatters: "The rebate covers the cost of a new heat pump for renters and owners." };
     expect(check(thin, rebate.article)).toEqual(["no_added_context: why it matters restates the source"]);
+  });
+
+  test("review cases: decimals, prefixes, whole dates, name pairs, number words, host text", () => {
+    const v = (source: string, tldr: string, hostText: string[] = []) =>
+      verifySummary({ tldr, whyItMatters: "" }, source, { hostText, requireContext: false }).map((f) => `${f.reason}: ${f.detail}`);
+    expect(splitSentences('"It works." It helps. It lasts.')).toHaveLength(3);
+    expect(v("Costs fell 1.5 percent.", "Kim Lee says costs fell 1.5 percent.")).toEqual(["unsupported_name: Kim Lee"]);
+    expect(v("$50; 5 projects; June 12; 1 project", "It got $5 on June 1.")).toEqual(["unsupported_amount: $5", "unsupported_date: June 1"]);
+    expect(v("2026-11-12; target year 2027", "It is due 2027-11-12.")).toEqual(["unsupported_date: 2027-11-12"]);
+    expect(v("Alice Smith and Bob Jones report.", "Alice Jones reports.")).toEqual(["unsupported_name: Alice Jones"]);
+    expect(v("The teams won.", "Five teams won.")).toEqual(["unsupported_number: Five"]);
+    expect(v("The cost is unknown.", "The cost is $900.", ["$900"])).toEqual(["unsupported_amount: $900", "unsupported_number: 900"]);
   });
 });

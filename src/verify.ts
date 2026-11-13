@@ -6,8 +6,10 @@ export interface Finding {
 }
 
 export interface VerifyOptions {
-  /** Text the output may draw facts from: the source plus host-supplied text. */
-  trusted: string[];
+  /** The source title and name. Facts in them count as source facts. */
+  sourceMeta?: string[];
+  /** Host-supplied text (context notes). It may support "why it matters", never the TL;DR. */
+  hostText?: string[];
   requireContext: boolean;
   /** Longest allowed copied run is runWords - 1. Default 8. */
   runWords?: number;
@@ -17,8 +19,11 @@ export interface VerifyOptions {
 
 const MONTHS = "january february march april may june july august september october november december jan feb mar apr jun jul aug sep sept oct nov dec".split(" ");
 const DAYS = "monday tuesday wednesday thursday friday saturday sunday".split(" ");
-const COMMON_START = new Set("the a an this that these those it its they their there here what why how when where who our your we you he she his her if in on at for to from as by with after before until while but and or so new more most some many all each every no not one two three four five six seven eight nine ten according reports report says said".split(" "));
+const COMMON_START = new Set("the a an this that these those it its they their there here what why how when where who our your we you he she his her if in on at for to from as by with after before until while but and or so new more most some many all each every no not according reports report says said".split(" "));
+// "one" is left out: it is mostly a pronoun ("one of the").
+const NUMBER_WORDS = /\b(?:zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|dozen|half|double|triple|twice)\b/gi;
 const AMOUNT = /(?:[$€£¥]|\b(?:usd|cad|eur|gbp|aud)\s?)\d+(?:,\d{3})*(?:\.\d+)?(?:\s?(?:million|billion|thousand|bn|m|k)\b)?/gi;
+const NUMERIC_DATE = /\b\d{4}-\d{1,2}-\d{1,2}\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g;
 const NUMBER = /\d+(?:,\d{3})*(?:\.\d+)?/g;
 const MONTH_DAY = new RegExp(`\\b(?:${MONTHS.join("|")})\\.?\\s+\\d{1,2}\\b|\\b\\d{1,2}\\s+(?:${MONTHS.join("|")})\\b`, "gi");
 
@@ -26,34 +31,62 @@ function norm(text: string): string {
   return text.toLowerCase().replace(/(\d),(?=\d{3})/g, "$1").replace(/\s+/g, " ");
 }
 
-function hasWord(haystack: string, word: string, flags: string): boolean {
-  return new RegExp(`(^|[^\\p{L}\\p{N}])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\p{L}\\p{N}])`, flags).test(haystack);
+function escape(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Numbers, amounts, dates and names in text that the trusted text does not hold. */
-export function checkFacts(text: string, trusted: string[]): Finding[] {
+/** needle appears whole: no letter or digit just before, no letter, digit or .digit just after. */
+function hasExact(haystack: string, needle: string): boolean {
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escape(needle)}(?![\\p{L}\\p{N}]|[.,]\\p{N})`, "u").test(haystack);
+}
+
+/** Capitalized word runs in one sentence. A run never starts with a common word. */
+function nameRuns(sentence: string): Array<{ words: string[]; first: boolean }> {
+  const runs: Array<{ words: string[]; first: boolean }> = [];
+  let current: { words: string[]; first: boolean } | undefined;
+  let index = 0;
+  for (const m of sentence.matchAll(/[\p{L}][\p{L}'’-]*|[^\p{L}\s]+/gu)) {
+    const token = m[0];
+    const isWord = /^\p{L}/u.test(token);
+    if (isWord && /^\p{Lu}/u.test(token) && !(current === undefined && COMMON_START.has(token.toLowerCase()))) {
+      if (!current) runs.push((current = { words: [], first: index === 0 }));
+      current.words.push(token);
+    } else {
+      current = undefined;
+    }
+    if (isWord) index++;
+  }
+  return runs;
+}
+
+/** Numbers, amounts, dates and names in text that the allowed text does not hold. */
+export function checkFacts(text: string, allowed: string[]): Finding[] {
   const found: Finding[] = [];
-  const raw = trusted.join("\n");
+  const raw = allowed.join("\n").replace(/\s+/g, " ");
   const hay = norm(raw);
   const add = (reason: string, detail: string) => {
     if (!found.some((f) => f.detail === detail)) found.push({ reason, detail });
   };
-  for (const m of text.match(AMOUNT) ?? []) if (!hay.includes(norm(m))) add("unsupported_amount", m);
-  for (const m of text.match(MONTH_DAY) ?? []) if (!hay.includes(norm(m))) add("unsupported_date", m);
-  for (const m of text.match(NUMBER) ?? []) if (!hasWord(hay, norm(m), "u")) add("unsupported_number", m);
+  for (const m of text.match(AMOUNT) ?? []) if (!hasExact(hay, norm(m))) add("unsupported_amount", m);
+  for (const m of text.match(NUMERIC_DATE) ?? []) if (!hasExact(hay, m)) add("unsupported_date", m);
+  for (const m of text.match(MONTH_DAY) ?? []) if (!hasExact(hay, norm(m))) add("unsupported_date", m);
+  for (const m of text.match(NUMBER) ?? []) if (!hasExact(hay, norm(m))) add("unsupported_number", m);
+  for (const m of text.match(NUMBER_WORDS) ?? []) if (!hasExact(hay, m.toLowerCase())) add("unsupported_number", m);
   for (const sentence of splitSentences(text)) {
-    const tokens = sentence.match(/[\p{L}][\p{L}'’-]*/gu) ?? [];
-    tokens.forEach((token, i) => {
-      const lower = token.toLowerCase();
-      if (!/^\p{Lu}/u.test(token)) return;
-      if (MONTHS.includes(lower) || DAYS.includes(lower)) {
-        if (!hasWord(hay, lower, "u")) add("unsupported_date", token);
-        return;
+    for (const run of nameRuns(sentence)) {
+      const words = run.words.filter((w) => {
+        const lower = w.toLowerCase();
+        if (!MONTHS.includes(lower) && !DAYS.includes(lower)) return true;
+        if (!hasExact(hay, lower)) add("unsupported_date", w);
+        return false;
+      });
+      if (words.length > 1) {
+        const phrase = words.join(" ");
+        if (!hasExact(raw, phrase)) add("unsupported_name", phrase);
+      } else if (words.length === 1 && !hasExact(run.first ? hay : raw, run.first ? words[0].toLowerCase() : words[0])) {
+        add("unsupported_name", words[0]);
       }
-      const first = i === 0 || sentence.trimStart().startsWith(`"${token}`);
-      if (first && COMMON_START.has(lower)) return;
-      if (!hasWord(first ? hay : raw, first ? lower : token, "u")) add("unsupported_name", token);
-    });
+    }
   }
   return found;
 }
@@ -100,6 +133,9 @@ export function novelty(text: string, source: string): number {
 /**
  * Check one summary against its source. Returns every finding; an empty
  * list means the summary may be rendered. Never edits the summary.
+ * TL;DR facts must come from the source (or its title and name). "Why it
+ * matters" may also draw on host text. Attribution is checked later, on
+ * the rendered article, by checkAttribution.
  */
 export function verifySummary(summary: Summary, source: string, options: VerifyOptions): Finding[] {
   const findings: Finding[] = [];
@@ -107,10 +143,11 @@ export function verifySummary(summary: Summary, source: string, options: VerifyO
   if (!tldr) findings.push({ reason: "empty_tldr", detail: "" });
   const count = splitSentences(tldr).length;
   if (count > 2) findings.push({ reason: "tldr_too_long", detail: `${count} sentences` });
-  const trusted = [source, ...options.trusted];
-  findings.push(...checkFacts(tldr, trusted), ...checkFacts(summary.whyItMatters, trusted));
+  const sourceFacts = [source, ...(options.sourceMeta ?? [])];
+  findings.push(...checkFacts(tldr, sourceFacts), ...checkFacts(summary.whyItMatters, [...sourceFacts, ...(options.hostText ?? [])]));
   findings.push(...checkCopy([tldr, summary.whyItMatters], source, options.runWords, options.maxQuoteWords));
   if (options.requireContext) {
+    // A word-overlap heuristic: it catches restating the source, not a close synonym paraphrase.
     const why = summary.whyItMatters.trim();
     if (why.split(/\s+/).length < 8 || novelty(why, source) < 0.5) {
       findings.push({ reason: "no_added_context", detail: why ? "why it matters restates the source" : "why it matters is empty" });

@@ -25,10 +25,14 @@ export interface Summary {
  */
 export type Summarizer = (input: SummaryInput) => Summary | Promise<Summary>;
 
-/** Split into sentences on . ! ? followed by a space or the end. Paragraphs never join; decimals stay whole. */
+/**
+ * Split into sentences at . ! ? (plus any closing quotes) followed by a
+ * space. Decimals stay whole and paragraphs never join. No text is dropped.
+ */
 export function splitSentences(text: string): string[] {
   return text.split(/\n\s*\n/).flatMap((para) =>
-    para.replace(/\s+/g, " ").trim().match(/[^.!?]+(?:[.!?]+(?=\s|$)|$)(?:["”’)]*)/g)?.map((s) => s.trim()).filter(Boolean) ?? []);
+    para.replace(/\s+/g, " ").trim().replace(/([.!?]+["”’)\]]*)\s+(?=\S)/g, "$1\u0001").split("\u0001"))
+    .map((s) => s.trim()).filter(Boolean);
 }
 
 function words(text: string): string[] {
