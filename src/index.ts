@@ -16,3 +16,7 @@ export { dedupe } from "./dedupe.js";
 export type { DedupeResult } from "./dedupe.js";
 export { fetchArticle, extractText, parseRobots, robotsAllows } from "./article.js";
 export type { SourceArticle, RobotsCache, FetchArticleOptions } from "./article.js";
+export { extractiveSummarizer, contextFor, splitSentences } from "./summarize.js";
+export type { Summarizer, Summary, SummaryInput } from "./summarize.js";
+export { verifySummary, checkFacts, checkCopy, novelty } from "./verify.js";
+export type { Finding, VerifyOptions } from "./verify.js";
