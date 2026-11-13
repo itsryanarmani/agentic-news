@@ -102,4 +102,42 @@ describe("runNews end to end on fixtures", () => {
     expect(report.counts.published).toBeUndefined();
     expect(byUrl(report)["https://news.example.test/2026/11/heat-pump-rebate-renters?utm_source=rss"]).toBe("rejected unsupported_amount");
   });
+
+  test("review: a partial publish is kept, and the retry calls only the failed target", async () => {
+    const good = recorder();
+    let calls = 0;
+    const flaky: PublishTarget = {
+      name: "flaky",
+      async publish(article, at) {
+        calls++;
+        if (calls === 1) throw new Error("down once");
+        return { target: "flaky", postKey: article.data.postKey, id: "1", at: at.toISOString() };
+      },
+    };
+    const run = io({ targets: [good.target, flaky] });
+    expect((await runNews(fixtureConfig(), run, { dryRun: false })).counts.publish_failed).toBe(1);
+    expect((await run.store.list())[0].status).toBe("partial");
+    const retry = await runNews(fixtureConfig(), run, { dryRun: false });
+    expect(retry.counts.published).toBe(1);
+    expect(good.published).toHaveLength(1);
+    expect(calls).toBe(2);
+  });
+
+  test("review: another site's approved items in a shared store are left alone", async () => {
+    const store = new MemoryStateStore();
+    const sensitive = io({ store });
+    const first = await runNews(fixtureConfig({ sensitive: true, site: "site-a" }), sensitive, { dryRun: false });
+    await approveItem(store, first.items.find((i) => i.status === "pending_approval")?.article?.data.postKey ?? "", "editor", NOW);
+    const rec = recorder();
+    const other = await runNews(fixtureConfig({ site: "site-b" }), io({ store, targets: [rec.target] }), { dryRun: false });
+    expect(rec.published.map((a) => a.data.postKey.split(":")[0])).toEqual(["site-b"]);
+    expect(other.counts.published).toBe(1);
+    expect((await store.list()).map((r) => `${r.postKey.split(":")[0]} ${r.status}`).sort()).toEqual(["site-a approved", "site-b published"]);
+  });
+
+  test("review: a live run with no targets is refused, not recorded as published", async () => {
+    const store = new MemoryStateStore();
+    await expect(runNews(fixtureConfig(), io({ store, targets: [] }), { dryRun: false })).rejects.toMatchObject({ reason: "no_targets" });
+    expect(await store.list()).toEqual([]);
+  });
 });

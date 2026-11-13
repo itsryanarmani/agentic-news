@@ -45,7 +45,7 @@ export interface RunReport {
   counts: Partial<Record<ItemStatus, number>>;
 }
 
-const SEEN: StateRecord["status"][] = ["published", "pending_approval", "approved"];
+const SEEN: StateRecord["status"][] = ["published", "pending_approval", "approved", "partial"];
 
 /**
  * One run for one site. Dry run is the default: every stage runs, but no
@@ -57,45 +57,50 @@ export async function runNews(config: NewsConfig, io: RunIO, options: { dryRun?:
   const now = io.now();
   const summarize = io.summarizer ?? extractiveSummarizer();
   const robots: RobotsCache = io.robots ?? new Map();
-  const records = await io.store.list();
+  if (!dryRun && io.targets.length === 0) throw new StageError("no_targets", "a live run needs at least one target");
+  // A store may be shared by several sites; only this site's records count.
+  const records = (await io.store.list()).filter((r) => r.postKey.startsWith(`${config.site}:`));
   const byKey = new Map(records.map((r) => [r.key, r]));
   const today = now.toISOString().slice(0, 10);
   let capLeft = config.maxItemsPerDay - records.filter((r) => r.status === "published" && r.at.startsWith(today)).length;
   const items: ItemResult[] = [];
 
-  const publish = async (key: string, url: string, article: RenderedArticle, approver?: string): Promise<ItemResult> => {
-    if (capLeft <= 0) return { key, url, status: "rejected", stage: "publish", reasons: [{ reason: "daily_cap", detail: `${config.maxItemsPerDay} a day` }], article, receipts: [] };
+  const publish = async (key: string, url: string, article: RenderedArticle, approver?: string, done: Receipt[] = []): Promise<ItemResult> => {
+    if (capLeft <= 0 && done.length === 0) return { key, url, status: "rejected", stage: "publish", reasons: [{ reason: "daily_cap", detail: `${config.maxItemsPerDay} a day` }], article, receipts: [] };
     if (dryRun) {
       capLeft--;
       return { key, url, status: "would_publish", reasons: [], article, receipts: [] };
     }
-    const receipts: Receipt[] = [];
+    const receipts: Receipt[] = [...done];
     for (const target of io.targets) {
+      if (receipts.some((r) => r.target === target.name)) continue;
       try {
         receipts.push(await target.publish(article, now));
       } catch (error) {
         const detail = `${target.name}: ${error instanceof Error ? error.message : String(error)}`;
+        // Keep what succeeded, so a retry does not call those targets again.
+        if (receipts.length) await io.store.put({ key, postKey: article.data.postKey, url, status: "partial", at: now.toISOString(), article, receipts, approver });
         return { key, url, status: "publish_failed", stage: "publish", reasons: [{ reason: "publish_failed", detail }], article, receipts };
       }
     }
-    capLeft--;
+    if (done.length === 0) capLeft--;
     await io.store.put({ key, postKey: article.data.postKey, url, status: "published", at: now.toISOString(), receipts, approver });
     return { key, url, status: "published", reasons: [], article, receipts };
   };
 
-  // Items a person approved since the last run go first.
-  for (const record of records.filter((r) => r.status === "approved" && r.article)) {
-    items.push(await publish(record.key, record.url, record.article as RenderedArticle, record.approver));
+  // Items a person approved, and partial publishes, go first.
+  for (const record of records.filter((r) => (r.status === "approved" || r.status === "partial") && r.article)) {
+    items.push(await publish(record.key, record.url, record.article as RenderedArticle, record.approver, record.receipts ?? []));
   }
 
-  const found = await discover(config, io.fetch);
+  const found = await discover(config, io.fetch, robots);
   const filtered = filterItems(found.items, config, now);
   const deduped = dedupe(filtered.kept, new Set(records.filter((r) => SEEN.includes(r.status)).map((r) => r.key)));
   const reported = new Set<string>();
   for (const r of [...filtered.rejected, ...deduped.rejected]) {
     const stored = byKey.get(r.key);
     // A stored story found again (often in a second feed) is reported once.
-    if (r.reason === "already_processed" && (stored?.status === "approved" || reported.has(r.key))) continue;
+    if (r.reason === "already_processed" && (stored?.status === "approved" || stored?.status === "partial" || reported.has(r.key))) continue;
     reported.add(r.key);
     const status: ItemStatus = r.reason === "already_processed" ? (stored?.status === "published" ? "already_published" : "pending_approval") : "rejected";
     items.push({ key: r.key, url: r.url, status, stage: r.stage, reasons: status === "rejected" ? [{ reason: r.reason, detail: r.detail ?? "" }] : [], receipts: [] });
@@ -120,8 +125,11 @@ export async function runNews(config: NewsConfig, io: RunIO, options: { dryRun?:
     } catch (error) {
       return reject("summarize", [{ reason: "summarizer_failed", detail: error instanceof Error ? error.message : String(error) }]);
     }
-    const trusted = [source.title, source.sourceName, config.siteName ?? "", ...context.flatMap((c) => [c.note, c.relatedLink?.title ?? ""])];
-    const findings = verifySummary(summary, source.text, { trusted, requireContext: config.requireContext });
+    const findings = verifySummary(summary, source.text, {
+      sourceMeta: [source.title, source.sourceName],
+      hostText: [config.siteName ?? "", ...context.flatMap((c) => [c.note, c.relatedLink?.title ?? ""])],
+      requireContext: config.requireContext,
+    });
     if (findings.length) return reject("verify", findings);
     const article = renderArticle(source, summary, config, item.matched, now);
     const attribution = checkAttribution(article, config);

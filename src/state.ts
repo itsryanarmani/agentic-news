@@ -5,7 +5,8 @@ import type { Receipt } from "./targets.js";
 import { StageError } from "./types.js";
 
 /** Only these outcomes are stored. Rejections are reported, not stored, so a later run may retry them. */
-export type StoredStatus = "published" | "pending_approval" | "approved";
+/** partial: some targets took the item and some failed; a retry calls only the failed ones. */
+export type StoredStatus = "published" | "pending_approval" | "approved" | "partial";
 
 export interface StateRecord {
   key: string;
@@ -20,7 +21,8 @@ export interface StateRecord {
 }
 
 export interface StateStore {
-  get(key: string): Promise<StateRecord | undefined>;
+  /** Look up by post key (site:item). */
+  get(postKey: string): Promise<StateRecord | undefined>;
   put(record: StateRecord): Promise<void>;
   list(): Promise<StateRecord[]>;
 }
@@ -28,11 +30,12 @@ export interface StateStore {
 export class MemoryStateStore implements StateStore {
   private readonly records = new Map<string, StateRecord>();
   async get(key: string) { return this.records.get(key); }
-  async put(record: StateRecord) { this.records.set(record.key, structuredClone(record)); }
+  async put(record: StateRecord) { this.records.set(record.postKey, structuredClone(record)); }
   async list() { return [...this.records.values()].map((r) => structuredClone(r)); }
 }
 
-/** One JSON file keyed by item key. Writes go to a temp file, then rename, so a crash never leaves half a file. */
+/** Records are keyed by post key (site:item), so sites can share one store. */
+/** One JSON file keyed by post key. Writes go to a temp file, then rename, so a crash never leaves half a file. */
 export class FileStateStore implements StateStore {
   constructor(private readonly path: string) {}
 
@@ -54,7 +57,7 @@ export class FileStateStore implements StateStore {
 
   async put(record: StateRecord) {
     const all = await this.load();
-    all[record.key] = record;
+    all[record.postKey] = record;
     await mkdir(dirname(this.path), { recursive: true });
     const temp = `${this.path}.tmp`;
     await writeFile(temp, `${JSON.stringify(all, null, 2)}\n`, "utf8");
