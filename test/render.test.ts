@@ -1,24 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { fetchArticle } from "../src/article.js";
-import { dedupe } from "../src/dedupe.js";
-import { discover } from "../src/discover.js";
-import { filterItems } from "../src/filter.js";
 import { checkAttribution, renderArticle, slugify } from "../src/render.js";
-import { contextFor, extractiveSummarizer } from "../src/summarize.js";
-import { fixtureConfig, fixtureWeb, NOW } from "./helpers.js";
+import { fixtureConfig, NOW, renderFirst } from "./helpers.js";
 
 const config = fixtureConfig();
-
-async function renderFirst() {
-  const web = fixtureWeb();
-  const { items } = await discover(config, web.fetch);
-  const [item] = dedupe(filterItems(items, config, NOW).kept).kept;
-  const article = await fetchArticle(item, config, { fetch: web.fetch });
-  const summary = await extractiveSummarizer()({
-    article, matched: item.matched, context: contextFor(config, item.matched), language: "en", tone: "neutral",
-  });
-  return renderArticle(article, summary, config, item.matched, NOW);
-}
 
 describe("render", () => {
   test("markdown has front matter, the TL;DR first, context, and the source link", async () => {
