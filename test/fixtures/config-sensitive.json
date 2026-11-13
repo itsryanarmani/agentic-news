@@ -1,0 +1,14 @@
+{
+  "site": "example-health",
+  "sensitive": true,
+  "keywords": ["heat pump", "rebate"],
+  "sources": [
+    { "name": "Example News", "url": "https://news.example.test/feed.xml" },
+    { "name": "Example Agency", "url": "https://agency.example.test/atom.xml" },
+    { "name": "Down Feed", "url": "https://down.example.test/feed.xml" },
+    { "name": "Broken Feed", "url": "https://broken.example.test/feed.xml" }
+  ],
+  "fetchAllowList": ["news.example.test", "agency.example.test"],
+  "blockedDomains": ["blocked.example.test"],
+  "context": [{ "keyword": "rebate", "note": "Our directory lists installers who handle rebate paperwork, so check the installer pages before you apply." }]
+}
