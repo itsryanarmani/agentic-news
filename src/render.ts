@@ -1,6 +1,6 @@
 import type { SourceArticle } from "./article.js";
 import { allowedHosts } from "./filter.js";
-import { hostMatches, hostOf } from "./http.js";
+import { hostAllowed, hostOf } from "./http.js";
 import type { Summary } from "./summarize.js";
 import type { NewsConfig } from "./types.js";
 import type { Finding } from "./verify.js";
@@ -32,8 +32,16 @@ export function slugify(text: string, max = 60): string {
   return cut.includes("-") ? cut.slice(0, cut.lastIndexOf("-")) : cut;
 }
 
+/**
+ * Escape HTML so summary text cannot inject markup into the markdown body.
+ * Front matter and JSON keep raw text; host templates escape it as usual.
+ */
+export function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function link(text: string, url: string): string {
-  return `[${text.replace(/[[\]]/g, "\\$&")}](${url.replace(/[()\s]/g, encodeURIComponent)})`;
+  return `[${escapeHtml(text).replace(/[[\]]/g, "\\$&")}](${url.replace(/[()\s<>"]/g, encodeURIComponent)})`;
 }
 
 /** Attribution rules: a named source, a link on an allowed host, and both in the body. */
@@ -47,7 +55,7 @@ export function checkAttribution(rendered: RenderedArticle, config: NewsConfig):
   } catch {
     found.push({ reason: "missing_source_link", detail: data.source_url });
   }
-  if (host && !hostMatches(host, allowedHosts(config))) found.push({ reason: "source_link_not_allowed", detail: host });
+  if (host && !hostAllowed(host, allowedHosts(config))) found.push({ reason: "source_link_not_allowed", detail: host });
   if (!markdown.includes(link(data.source_name, data.source_url))) {
     found.push({ reason: "missing_source_link", detail: "body has no source link" });
   }
@@ -62,7 +70,8 @@ export function renderArticle(article: SourceArticle, summary: Summary, config: 
   const date = article.publishedAt ?? now.toISOString();
   const data: ArticleData = {
     postKey: `${config.site}:${article.key}`,
-    slug: `${date.slice(0, 10)}-${slugify(article.title)}`,
+    // The key suffix keeps two stories with the same date and title apart.
+    slug: `${date.slice(0, 10)}-${slugify(article.title)}-${article.key.slice(0, 6)}`,
     lang: config.language,
     title: article.title,
     date,
@@ -78,8 +87,8 @@ export function renderArticle(article: SourceArticle, summary: Summary, config: 
     source_name: data.source_name, tags: data.tags, tldr: data.tldr, post_key: data.postKey,
   };
   const lines = ["---", ...Object.entries(front).map(([k, v]) => `${k}: ${JSON.stringify(v)}`), "---", ""];
-  lines.push(`**TL;DR:** ${data.tldr}`, "");
-  if (data.why_it_matters) lines.push("## Why it matters", "", data.why_it_matters, "");
+  lines.push(`**TL;DR:** ${escapeHtml(data.tldr)}`, "");
+  if (data.why_it_matters) lines.push("## Why it matters", "", escapeHtml(data.why_it_matters), "");
   if (data.related_link) lines.push(`Related: ${link(data.related_link.title, data.related_link.url)}`, "");
   lines.push(`Source: ${link(data.source_name, data.source_url)}, published ${date.slice(0, 10)}.`, "");
   return { data, markdown: lines.join("\n") };

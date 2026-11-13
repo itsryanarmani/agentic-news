@@ -32,7 +32,7 @@ describe("render", () => {
     expect(body).toContain("## Why it matters");
     expect(body).toContain("Related: [How rebates work](https://directory.example.test/guides/rebates)");
     expect(body).toContain("Source: [Example News](https://news.example.test/2026/11/heat-pump-rebate-renters?utm_source=rss), published 2026-11-12.");
-    expect(rendered.data).toMatchObject({ slug: "2026-11-12-province-expands-heat-pump-rebate-to-renters", postKey: expect.stringMatching(/^example-niche:[0-9a-f]{16}$/) });
+    expect(rendered.data).toMatchObject({ slug: expect.stringMatching(/^2026-11-12-province-expands-heat-pump-rebate-to-renters-[0-9a-f]{6}$/), postKey: expect.stringMatching(/^example-niche:[0-9a-f]{16}$/) });
     expect(checkAttribution(rendered, config)).toEqual([]);
   });
 
@@ -42,6 +42,20 @@ describe("render", () => {
     expect(checkAttribution(unnamed, config).map((f) => f.reason)).toEqual(["missing_attribution", "missing_source_link"]);
     const offList = { ...rendered, data: { ...rendered.data, source_url: "https://elsewhere.example.test/x" } };
     expect(checkAttribution(offList, config).map((f) => f.reason)).toEqual(["source_link_not_allowed", "missing_source_link"]);
+  });
+
+  test("summary text cannot inject HTML into the page", async () => {
+    const rendered = await renderFirst();
+    const evil = renderArticle(
+      { key: "abcdef0123456789", url: rendered.data.source_url, title: "T", sourceName: "Example <b>News</b>", text: "" },
+      { tldr: "It works <script>alert(1)</script>.", whyItMatters: "<img src=x onerror=alert(1)>" },
+      config, [], NOW,
+    );
+    // Front matter and JSON carry raw data for templates; the markdown body is escaped.
+    const body = evil.markdown.split("---\n").at(-1) ?? "";
+    expect(body).not.toMatch(/<script|<img|<b>/);
+    expect(evil.markdown).toContain("It works &lt;script&gt;alert(1)&lt;/script&gt;.");
+    expect(evil.data.slug).toBe("2026-11-12-t-abcdef");
   });
 
   test("slugs are short, ASCII and cut on a word break", () => {
