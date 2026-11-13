@@ -135,6 +135,7 @@ The default summarizer is extractive and deterministic. It quotes one key senten
 - The markdown body escapes HTML. Front matter and JSON hold raw text, so escape it in your templates.
 - When one target fails after another succeeds, the run stores the receipts, and the next run calls only the failed target. A partial publish counts toward `maxItemsPerDay`. Give each target its own name, for example `httpTarget({ name: "cms", ... })`.
 - Several sites can share one state file. Each run sees only its own site's records.
+- Delivery is at least once. If the state store fails to save after a target took an item, the next run sends it again. Every target carries the stable post key (`post_key`, the `idempotency-key` header, the queue entry id), so receivers can drop repeats.
 
 ## Limits
 
