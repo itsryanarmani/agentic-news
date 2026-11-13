@@ -24,7 +24,7 @@
     }
   },
   "https://news.example.test/2026/11/heat-pump-rebate-renters?utm_source=rss": {
-    "file": "pages/rebate-renters.page",
+    "file": "bodies/rebate-renters.page",
     "headers": {
       "content-type": "text/html; charset=utf-8"
     }
@@ -36,13 +36,13 @@
     }
   },
   "https://news.example.test/2026/11/members-only": {
-    "file": "pages/members-only.page",
+    "file": "bodies/members-only.page",
     "headers": {
       "content-type": "text/html"
     }
   },
   "https://agency.example.test/notices/efficiency-standard": {
-    "file": "pages/efficiency-standard.page",
+    "file": "bodies/efficiency-standard.page",
     "headers": {
       "content-type": "text/html"
     }
