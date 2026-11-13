@@ -85,12 +85,12 @@ Source: [Example News](https://news.example.test/2026/11/heat-pump-rebate-renter
     "id": "example-niche:de8bc83451328b6f",
     "brand": "example-niche",
     "post": {
-      "text": "Province expands heat pump rebate to renters (via Example News)\n\nOur directory lists installers who handle rebate paperwork, so check the installer pages before you apply.\n\nhttps://directory.example.test/news/2026-11-12-province-expands-heat-pump-rebate-to-renters-de8bc8",
+      "text": "Province expands heat pump rebate to renters (via Example News)\n\nOur directory lists installers who handle rebate paperwork, so check the installer pages before you apply.\n\nhttps://directory.example.test/news/2026-11-12-province-expands-heat-pump-rebate-to-renters-de8bc83451328b6f",
       "targets": [
         "x",
         "linkedin"
       ],
-      "link": "https://directory.example.test/news/2026-11-12-province-expands-heat-pump-rebate-to-renters-de8bc8",
+      "link": "https://directory.example.test/news/2026-11-12-province-expands-heat-pump-rebate-to-renters-de8bc83451328b6f",
       "brand": "example-niche"
     },
     "enqueuedAt": "2026-11-12T12:00:00.000Z",
