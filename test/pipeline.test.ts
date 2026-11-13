@@ -144,6 +144,8 @@ describe("runNews end to end on fixtures", () => {
   test("review round 2: duplicate target names are refused; a partial publish uses the daily cap", async () => {
     const a = recorder();
     await expect(runNews(fixtureConfig(), io({ targets: [a.target, a.target] }), { dryRun: false })).rejects.toMatchObject({ reason: "duplicate_target_name" });
+    const blank: PublishTarget = { name: "", async publish() { throw new Error("unused"); } };
+    await expect(runNews(fixtureConfig(), io({ targets: [blank] }), { dryRun: false })).rejects.toMatchObject({ reason: "empty_target_name" });
     const config = fixtureConfig({
       maxItemsPerDay: 1,
       context: [{ keyword: "heat pump", note: "Our directory lists certified installers by region, so compare three quotes before you buy." }],

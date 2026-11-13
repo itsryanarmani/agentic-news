@@ -61,7 +61,8 @@ export async function runNews(config: NewsConfig, io: RunIO, options: { dryRun?:
   // Receipts are matched to targets by name, so each name must be unique.
   const names = io.targets.map((t) => t.name);
   const twice = names.find((n, i) => names.indexOf(n) !== i);
-  if (twice) throw new StageError("duplicate_target_name", `${twice}: give each target its own name`);
+  if (twice !== undefined) throw new StageError("duplicate_target_name", `${twice || "(empty)"}: give each target its own name`);
+  if (names.some((n) => !n.trim())) throw new StageError("empty_target_name", "every target needs a name");
   // A store may be shared by several sites; only this site's records count.
   const records = (await io.store.list()).filter((r) => r.postKey.startsWith(`${config.site}:`));
   const byKey = new Map(records.map((r) => [r.key, r]));
