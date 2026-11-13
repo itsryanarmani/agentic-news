@@ -40,6 +40,11 @@ export function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** One line of escaped text: no HTML, no backtick runs, no line breaks to open a block. */
+function inline(text: string): string {
+  return escapeHtml(text.replace(/\s+/g, " ").trim()).replace(/[`~]/g, "\\$&");
+}
+
 function link(text: string, url: string): string {
   return `[${escapeHtml(text).replace(/[[\]]/g, "\\$&")}](${url.replace(/[()\s<>"]/g, encodeURIComponent)})`;
 }
@@ -70,8 +75,8 @@ export function renderArticle(article: SourceArticle, summary: Summary, config: 
   const date = article.publishedAt ?? now.toISOString();
   const data: ArticleData = {
     postKey: `${config.site}:${article.key}`,
-    // The key suffix keeps two stories with the same date and title apart.
-    slug: `${date.slice(0, 10)}-${slugify(article.title)}-${article.key.slice(0, 6)}`,
+    // The full key keeps two stories with the same date and title apart.
+    slug: `${date.slice(0, 10)}-${slugify(article.title)}-${article.key}`,
     lang: config.language,
     title: article.title,
     date,
@@ -87,8 +92,8 @@ export function renderArticle(article: SourceArticle, summary: Summary, config: 
     source_name: data.source_name, tags: data.tags, tldr: data.tldr, post_key: data.postKey,
   };
   const lines = ["---", ...Object.entries(front).map(([k, v]) => `${k}: ${JSON.stringify(v)}`), "---", ""];
-  lines.push(`**TL;DR:** ${escapeHtml(data.tldr)}`, "");
-  if (data.why_it_matters) lines.push("## Why it matters", "", escapeHtml(data.why_it_matters), "");
+  lines.push(`**TL;DR:** ${inline(data.tldr)}`, "");
+  if (data.why_it_matters) lines.push("## Why it matters", "", inline(data.why_it_matters), "");
   if (data.related_link) lines.push(`Related: ${link(data.related_link.title, data.related_link.url)}`, "");
   lines.push(`Source: ${link(data.source_name, data.source_url)}, published ${date.slice(0, 10)}.`, "");
   return { data, markdown: lines.join("\n") };
