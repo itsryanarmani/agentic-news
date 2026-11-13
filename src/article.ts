@@ -58,7 +58,8 @@ export function robotsAllows(rules: RobotsRule[], path: string): boolean {
 function decodePath(path: string): string {
   return path.replace(/(?:%[0-9a-f]{2})+/gi, (m) => {
     try {
-      return decodeURIComponent(m);
+      // An encoded * or $ stays literal, so it never becomes a robots wildcard.
+      return decodeURIComponent(m).replace(/\*/g, "%2A").replace(/\$/g, "%24");
     } catch {
       return m;
     }

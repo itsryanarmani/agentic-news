@@ -115,6 +115,11 @@ describe("safe article fetch", () => {
     expect(robotsAllows(rules, "/café")).toBe(false);
   });
 
+  test("an encoded asterisk in a robots rule stays literal", () => {
+    const rules = parseRobots("User-agent: *\nDisallow: /private\nAllow: /private/%2A/public\n", "agentic-news");
+    expect(robotsAllows(rules, "/private/secret/public")).toBe(false);
+  });
+
   test("robots rules: own agent group wins, longest match wins", () => {
     const merged = parseRobots("User-agent: agentic-news\nDisallow: /private\n\nUser-agent: agentic-news\nDisallow: /secret\n", "agentic-news");
     expect(robotsAllows(merged, "/secret/x")).toBe(false);
