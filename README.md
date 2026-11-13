@@ -87,7 +87,7 @@ Each stage is a small function with injected I/O: fetch, clock, state store, sum
 ```
 
 - `sources` is the allow-list. A source is a feed, or one official page with `"kind": "page"`.
-- Articles come only from `fetchAllowList` and the source hosts. An entry matches that exact host; write `*.example.test` to allow its subdomains too.
+- Articles come only from `fetchAllowList` and the source hosts. An entry matches that exact host, with or without a leading `www.`. Write `*.example.test` to allow its subdomains too.
 - `blockedDomains` covers each domain and its subdomains, wins over both lists, and applies to every redirect hop.
 - `sensitive: true` (health, legal, money, immigration) holds every item for a person to approve.
 - `context` is your own text. "Why it matters" and the related link come from it. With `requireContext: true`, an item with no added context is refused.
@@ -133,7 +133,7 @@ The default summarizer is extractive and deterministic. It quotes one key senten
 - Every request has a size cap (1 MB) and a time cap (10 s). Paywall and login pages are refused.
 - The HTTP target gets its token from a resolver you supply, sends an idempotency key and refuses redirects.
 - The markdown body escapes HTML. Front matter and JSON hold raw text, so escape it in your templates.
-- When one target fails after another succeeds, the run stores the receipts, and the next run calls only the failed target.
+- When one target fails after another succeeds, the run stores the receipts, and the next run calls only the failed target. A partial publish counts toward `maxItemsPerDay`. Give each target its own name, for example `httpTarget({ name: "cms", ... })`.
 - Several sites can share one state file. Each run sees only its own site's records.
 
 ## Limits
