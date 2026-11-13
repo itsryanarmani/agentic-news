@@ -20,17 +20,22 @@ export interface VerifyOptions {
 const MONTHS = "january february march april may june july august september october november december jan feb mar apr jun jul aug sep sept oct nov dec".split(" ");
 const DAYS = "monday tuesday wednesday thursday friday saturday sunday".split(" ");
 const COMMON_START = new Set("the a an this that these those it its they their there here what why how when where who our your we you he she his her if in on at for to from as by with after before until while but and or so new more most some many all each every no not according reports report says said then also however now today yesterday still meanwhile next first last".split(" "));
-// "one" is left out: it is mostly a pronoun ("one of the").
+// "one" counts only as a quantity, not in "one of", "no one", "every one" and the like.
+const ONE = /(?<!\b(?:no|any|every|some|each|which|this|that|the)\s)\bone\b(?!\s+(?:of|another|by)\b)/gi;
 const NUMBER_WORDS = /\b(?:zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|dozen|half|double|triple|twice)\b/gi;
-const AMOUNT = /(?:[$€£¥]|\b(?:usd|cad|eur|gbp|aud)\s?)\d+(?:,\d{3})*(?:\.\d+)?(?:\s?(?:million|billion|thousand|bn|m|k)\b)?/gi;
+const AMOUNT = /(?:[$€£¥]\s?|\b(?:usd|cad|eur|gbp|aud)\s?)\d+(?:,\d{3})*(?:\.\d+)?(?:\s?(?:million|billion|thousand|bn|m|k)\b)?/gi;
 const NUMERIC_DATE = /\b\d{4}-\d{1,2}-\d{1,2}\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g;
 const AMOUNT_WORDS = /\d+(?:,\d{3})*(?:\.\d+)?\s?(?:(?:million|billion|thousand)\s)?(?:dollars?|euros?|pounds?|yen|yuan|cents?|pence|rupees?|francs?|pesos?)\b/gi;
-const NUMBER = /\d+(?:,\d{3})*(?:\.\d+)?/g;
+// A leading minus sign is part of the number, so -5 is not 5.
+const NUMBER = /(?<![\p{L}\p{N}])[-−]?\d+(?:,\d{3})*(?:\.\d+)?/gu;
 // A month and day, with the year when one follows, so "June 12, 2027" is one fact.
-const MONTH_DAY = new RegExp(`\\b(?:${MONTHS.join("|")})\\.?\\s+\\d{1,2}(?:,?\\s+\\d{4})?\\b|\\b\\d{1,2}\\s+(?:${MONTHS.join("|")})(?:,?\\s+\\d{4})?\\b`, "gi");
+const MONTH_DAY = new RegExp(`\\b(?:${MONTHS.join("|")})\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?\\b|\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:of\\s+)?(?:${MONTHS.join("|")})(?:,?\\s+\\d{4})?\\b`, "gi");
 
 function norm(text: string): string {
-  return text.toLowerCase().replace(/(\d),(?=\d{3})/g, "$1").replace(/(\d),\s/g, "$1 ").replace(/\s+/g, " ");
+  return text.toLowerCase()
+    .replace(/(\d)(?:st|nd|rd|th)\b/g, "$1").replace(/(\d) of /g, "$1 ")
+    .replace(/(\d),(?=\d{3})/g, "$1").replace(/(\d),\s/g, "$1 ")
+    .replace(/([$€£¥])\s+(?=\d)/g, "$1").replace(/−/g, "-").replace(/\s+/g, " ");
 }
 
 function escape(text: string): string {
@@ -75,6 +80,9 @@ export function checkFacts(text: string, allowed: string[]): Finding[] {
   for (const m of text.match(MONTH_DAY) ?? []) if (!hasExact(hay, norm(m))) add("unsupported_date", m);
   for (const m of text.match(NUMBER) ?? []) if (!hasExact(hay, norm(m))) add("unsupported_number", m);
   for (const m of text.match(NUMBER_WORDS) ?? []) if (!hasExact(hay, m.toLowerCase())) add("unsupported_number", m);
+  for (const m of text.match(ONE) ?? []) if (!hasExact(hay, "one")) add("unsupported_number", m);
+  // Brand-style names that start lowercase (iPhone, eBay) are names too.
+  for (const m of text.match(/(?<![\p{L}\p{N}])\p{Ll}+\p{Lu}[\p{L}\p{N}]*/gu) ?? []) if (!hasExact(raw, m)) add("unsupported_name", m);
   for (const sentence of splitSentences(text)) {
     for (const run of nameRuns(sentence)) {
       const words = run.words;
