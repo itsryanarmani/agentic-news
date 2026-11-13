@@ -44,6 +44,8 @@ export function fileTarget(options: FileTargetOptions): PublishTarget {
 
 export interface HttpTargetOptions {
   endpoint: string;
+  /** Default "http". Give each HTTP target its own name when you use more than one. */
+  name?: string;
   /** The host resolves the token (env, vault, secret store). The library reads none. */
   token: () => string | Promise<string>;
   fetch?: FetchLike;
@@ -58,7 +60,7 @@ export interface HttpTargetOptions {
 export function httpTarget(options: HttpTargetOptions): PublishTarget {
   const fetch = options.fetch ?? globalThis.fetch;
   return {
-    name: "http",
+    name: options.name ?? "http",
     async publish(article, at) {
       const token = await options.token();
       if (!token) throw new StageError("missing_token", "the token resolver returned nothing");
@@ -81,7 +83,7 @@ export function httpTarget(options: HttpTargetOptions): PublishTarget {
       if (!response.ok) throw new StageError("http_target_failed", `status ${response.status}`);
       const body = (await response.json().catch(() => ({}))) as { id?: unknown };
       const id = typeof body.id === "string" ? body.id : article.data.postKey;
-      return { target: "http", postKey: article.data.postKey, id, at: at.toISOString(), detail: `status ${response.status}` };
+      return { target: options.name ?? "http", postKey: article.data.postKey, id, at: at.toISOString(), detail: `status ${response.status}` };
     },
   };
 }

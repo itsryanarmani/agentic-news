@@ -140,4 +140,18 @@ describe("runNews end to end on fixtures", () => {
     await expect(runNews(fixtureConfig(), io({ store, targets: [] }), { dryRun: false })).rejects.toMatchObject({ reason: "no_targets" });
     expect(await store.list()).toEqual([]);
   });
+
+  test("review round 2: duplicate target names are refused; a partial publish uses the daily cap", async () => {
+    const a = recorder();
+    await expect(runNews(fixtureConfig(), io({ targets: [a.target, a.target] }), { dryRun: false })).rejects.toMatchObject({ reason: "duplicate_target_name" });
+    const config = fixtureConfig({
+      maxItemsPerDay: 1,
+      context: [{ keyword: "heat pump", note: "Our directory lists certified installers by region, so compare three quotes before you buy." }],
+    });
+    const good = recorder();
+    const bad: PublishTarget = { name: "bad", async publish() { throw new Error("down"); } };
+    const report = await runNews(config, io({ targets: [good.target, bad] }), { dryRun: false });
+    expect(good.published).toHaveLength(1);
+    expect(report.items.filter((i) => i.reasons[0]?.reason === "daily_cap")).toHaveLength(1);
+  });
 });

@@ -58,11 +58,15 @@ export async function runNews(config: NewsConfig, io: RunIO, options: { dryRun?:
   const summarize = io.summarizer ?? extractiveSummarizer();
   const robots: RobotsCache = io.robots ?? new Map();
   if (!dryRun && io.targets.length === 0) throw new StageError("no_targets", "a live run needs at least one target");
+  // Receipts are matched to targets by name, so each name must be unique.
+  const names = io.targets.map((t) => t.name);
+  const twice = names.find((n, i) => names.indexOf(n) !== i);
+  if (twice) throw new StageError("duplicate_target_name", `${twice}: give each target its own name`);
   // A store may be shared by several sites; only this site's records count.
   const records = (await io.store.list()).filter((r) => r.postKey.startsWith(`${config.site}:`));
   const byKey = new Map(records.map((r) => [r.key, r]));
   const today = now.toISOString().slice(0, 10);
-  let capLeft = config.maxItemsPerDay - records.filter((r) => r.status === "published" && r.at.startsWith(today)).length;
+  let capLeft = config.maxItemsPerDay - records.filter((r) => (r.status === "published" || r.status === "partial") && r.at.startsWith(today)).length;
   const items: ItemResult[] = [];
 
   const publish = async (key: string, url: string, article: RenderedArticle, approver?: string, done: Receipt[] = []): Promise<ItemResult> => {
@@ -79,7 +83,11 @@ export async function runNews(config: NewsConfig, io: RunIO, options: { dryRun?:
       } catch (error) {
         const detail = `${target.name}: ${error instanceof Error ? error.message : String(error)}`;
         // Keep what succeeded, so a retry does not call those targets again.
-        if (receipts.length) await io.store.put({ key, postKey: article.data.postKey, url, status: "partial", at: now.toISOString(), article, receipts, approver });
+        if (receipts.length) {
+          // A partial publish is out in the world, so it uses today's allowance.
+          if (done.length === 0) capLeft--;
+          await io.store.put({ key, postKey: article.data.postKey, url, status: "partial", at: now.toISOString(), article, receipts, approver });
+        }
         return { key, url, status: "publish_failed", stage: "publish", reasons: [{ reason: "publish_failed", detail }], article, receipts };
       }
     }
