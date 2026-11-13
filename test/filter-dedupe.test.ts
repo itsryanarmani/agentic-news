@@ -49,6 +49,15 @@ describe("filter and dedupe on fixture feeds", () => {
     expect(again.reasons).toContain("duplicate_content https://agency.example.test/notices/rebate-renters");
   });
 
+  test("a stored story wins over its copy even when the copy comes first in feed order", async () => {
+    const first = await run();
+    const original = first.deduped.kept[0];
+    const mirror = { ...original, key: "mirror", url: "https://agency.example.test/mirror", canonicalUrl: "https://agency.example.test/mirror" };
+    const again = dedupe([mirror, original], new Set([original.key]));
+    expect(again.kept).toEqual([]);
+    expect(again.rejected.map((r) => r.reason)).toEqual(["already_processed", "duplicate_content"]);
+  });
+
   test("a blocked domain wins over the allow-list", async () => {
     const { reasons } = await run(new Set(), { blockedDomains: ["agency.example.test", "blocked.example.test"] });
     expect(reasons).toContain("blocked_domain https://agency.example.test/notices/efficiency-standard");

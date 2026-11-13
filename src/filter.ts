@@ -1,4 +1,4 @@
-import { hostMatches, hostOf } from "./http.js";
+import { hostAllowed, hostBlocked, hostOf } from "./http.js";
 import type { NewsConfig, NewsItem, Rejection } from "./types.js";
 
 export interface FilterResult {
@@ -36,8 +36,8 @@ export function filterItems(items: NewsItem[], config: NewsConfig, now: Date): F
     const host = hostOf(item.url);
     const matched = matchKeywords(`${item.title} ${item.summary ?? ""}`, config.keywords);
     const time = item.publishedAt ? Date.parse(item.publishedAt) : Number.NaN;
-    if (hostMatches(host, config.blockedDomains)) reject("blocked_domain", host);
-    else if (!hostMatches(host, allow)) reject("host_not_allowed", host);
+    if (hostBlocked(host, config.blockedDomains)) reject("blocked_domain", host);
+    else if (!hostAllowed(host, allow)) reject("host_not_allowed", host);
     else if (matched.length === 0) reject("off_topic");
     else if (Number.isNaN(time)) reject("no_date");
     else if (time < oldest) reject("stale", item.publishedAt);
