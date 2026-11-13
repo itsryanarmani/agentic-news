@@ -24,3 +24,7 @@ export { renderArticle, checkAttribution, slugify } from "./render.js";
 export type { ArticleData, RenderedArticle } from "./render.js";
 export { fileTarget, httpTarget, queueTarget, jsonQueueFile, socialText } from "./targets.js";
 export type { Receipt, PublishTarget, FileTargetOptions, HttpTargetOptions, QueueTargetOptions, QueueStoreLike, QueuedPost, SocialPost, Channel } from "./targets.js";
+export { MemoryStateStore, FileStateStore, approveItem } from "./state.js";
+export type { StateStore, StateRecord, StoredStatus } from "./state.js";
+export { runNews } from "./pipeline.js";
+export type { RunIO, RunReport, ItemResult, ItemStatus, ApprovalHook, ApprovalDecision } from "./pipeline.js";
